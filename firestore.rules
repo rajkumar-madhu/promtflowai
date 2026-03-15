@@ -1,0 +1,71 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.uid;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "rajkumar.madhu077@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidSettings(data) {
+      return data.keys().hasOnly(['uid', 'geminiKey', 'openaiKey', 'anthropicKey', 'updatedAt']) &&
+             data.uid == request.auth.uid &&
+             (!('geminiKey' in data) || (data.geminiKey is string && data.geminiKey.size() < 200)) &&
+             (!('openaiKey' in data) || (data.openaiKey is string && data.openaiKey.size() < 200)) &&
+             (!('anthropicKey' in data) || (data.anthropicKey is string && data.anthropicKey.size() < 200));
+    }
+
+    function isValidPrompt(data) {
+      return data.keys().hasAll(['uid', 'content', 'modality']) &&
+             data.keys().hasOnly(['uid', 'title', 'content', 'modality', 'result', 'createdAt']) &&
+             data.uid == request.auth.uid &&
+             data.content is string && data.content.size() < 10000 &&
+             data.modality in ['text', 'code', 'image', 'video'] &&
+             (!('title' in data) || (data.title is string && data.title.size() < 200)) &&
+             (!('result' in data) || (data.result is string && data.result.size() < 1000000)); // Result can be large (base64)
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /settings/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create, update: if isOwner(uid) && isValidSettings(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /prompts/{promptId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && isValidPrompt(request.resource.data);
+      allow update: if isDocOwner() && isValidPrompt(request.resource.data) && 
+                      request.resource.data.uid == resource.data.uid;
+      allow delete: if isDocOwner() || isAdmin();
+    }
+    
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

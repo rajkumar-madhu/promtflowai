@@ -1,0 +1,77 @@
+{
+  "entities": {
+    "UserSettings": {
+      "title": "User Settings",
+      "description": "Stores user-specific settings including API keys",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "The Firebase Auth UID of the user"
+        },
+        "geminiKey": {
+          "type": "string",
+          "description": "Gemini API Key"
+        },
+        "openaiKey": {
+          "type": "string",
+          "description": "OpenAI API Key"
+        },
+        "anthropicKey": {
+          "type": "string",
+          "description": "Anthropic API Key"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update timestamp"
+        }
+      },
+      "required": ["uid"]
+    },
+    "Prompt": {
+      "title": "Prompt",
+      "description": "Stores generated prompts and their results",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "The Firebase Auth UID of the owner"
+        },
+        "title": {
+          "type": "string",
+          "description": "Short title for the prompt"
+        },
+        "content": {
+          "type": "string",
+          "description": "The full prompt text"
+        },
+        "modality": {
+          "type": "string",
+          "enum": ["text", "code", "image", "video"],
+          "description": "The type of generation"
+        },
+        "result": {
+          "type": "string",
+          "description": "The generated result (text, code, or URL)"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp"
+        }
+      },
+      "required": ["uid", "content", "modality"]
+    }
+  },
+  "firestore": {
+    "/settings/{uid}": {
+      "schema": "UserSettings",
+      "description": "User settings collection"
+    },
+    "/prompts/{promptId}": {
+      "schema": "Prompt",
+      "description": "Collection of generated prompts"
+    }
+  }
+}
